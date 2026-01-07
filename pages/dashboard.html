@@ -147,11 +147,11 @@
   <script>
     // TEMP MOCK DATA (replaced later with Firestore)
     const portfolio = [
-      { name: "Jane Doe", delta: 3.2 },
-      { name: "John Smith", delta: -1.1 },
-      { name: "Alex Kim", delta: 0.4 },
-      { name: "Maria Lopez", delta: 0.0 },
-      { name: "Chris Patel", delta: 2.7 }
+    { name: "Jane Doe", percentToday: 0.42, totalPoints: 18.6 },
+    { name: "John Smith", percentToday: -0.18, totalPoints: 9.3 },
+    { name: "Alex Kim", percentToday: 0.00, totalPoints: 12.1 },
+    { name: "Maria Lopez", percentToday: 0.27, totalPoints: 21.4 },
+    { name: "Chris Patel", percentToday: 0.61, totalPoints: 15.8 }
     ];
 
     const leaderboard = [
@@ -160,21 +160,32 @@
       { rank: 3, name: "Sam", total: 115, today: -0.4 }
     ];
 
-    const portfolioEl = document.getElementById("portfolio");
-    portfolio.forEach(p => {
-      const div = document.createElement("div");
-      div.className = "card";
+   const portfolioEl = document.getElementById("portfolio");
 
-      let cls = p.delta > 0 ? "up" : p.delta < 0 ? "down" : "flat";
-
-      div.innerHTML = `
-        <div class="name">${p.name}</div>
-        <div class="delta ${cls}">
-          ${p.delta > 0 ? "+" : ""}${p.delta}
-        </div>
+   portfolio.forEach(p => {
+     const div = document.createElement("div");
+     div.className = "card";
+    
+     const cls =
+       p.percentToday > 0 ? "up" :
+       p.percentToday < 0 ? "down" :
+       "flat";
+    
+    div.innerHTML = `
+       <div class="name">${p.name}</div>
+       <div class="delta ${cls}">
+         ${p.percentToday > 0 ? "+" : ""}${p.percentToday.toFixed(2)}%
+         <span style="font-size:0.85em; color:#666;"> today</span>
+       </div>
+       <div style="margin-top:6px; font-weight:500;">
+         ${p.totalPoints > 0 ? "+" : ""}${p.totalPoints.toFixed(1)}
+         <span style="font-size:0.85em; color:#666;"> pts total</span>
+       </div>
       `;
+    
       portfolioEl.appendChild(div);
     });
+
 
     const leaderboardEl = document.getElementById("leaderboard");
     leaderboard.forEach(l => {
