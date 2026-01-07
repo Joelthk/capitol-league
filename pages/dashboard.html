@@ -99,15 +99,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebas
 import { getFirestore, collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, onSnapshot, collectionGroup, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-// --- Firebase config ---
+// Firebase config
 const firebaseConfig = { apiKey:"AIzaSyCjotIoBJtRrp3p3q6s9TSdZ044pAQoB20", authDomain:"capitol-league.firebaseapp.com", projectId:"capitol-league" };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
 let uid = null;
-
-// UI elements
 const loginBox = document.getElementById("loginBox");
 const container = document.querySelector(".container");
 const loginBtn = document.getElementById("loginBtn");
@@ -170,34 +168,39 @@ onAuthStateChanged(auth,async(user)=>{
 function loadUserPortfolioRealtime(){
   const portfolioEl = document.getElementById("portfolio");
   const holdingsRef = collection(db,"users",uid,"holdings");
-  onSnapshot(holdingsRef,async(holdSnap)=>{
+  onSnapshot(holdingsRef,async(snapshot)=>{
     portfolioEl.innerHTML="";
-    const realDocs = holdSnap.docs.filter(d=>d.id!=="_placeholder");
+    const realDocs = snapshot.docs.filter(d=>d.id!=="_placeholder");
     if(realDocs.length===0){ portfolioEl.innerHTML=`<p style="color:#666;">You haven't drafted any politicians yet.</p>`; return; }
-    for(const docSnap of realDocs){
+
+    const promises = realDocs.map(async(docSnap)=>{
       const polId=docSnap.id;
-      const polRef = doc(db,"politicians",polId);
-      const polSnap = await getDoc(polRef);
-      if(!polSnap.exists()) continue;
-      const polData = polSnap.data();
-      const cls = polData.lastPercentChange>0?"up":polData.lastPercentChange<0?"down":"flat";
-      const div = document.createElement("div");
-      div.className="card"; div.id=`holding-${polId}`;
+      const polSnap=await getDoc(doc(db,"politicians",polId));
+      if(!polSnap.exists()) return null;
+      return {id:polId,data:polSnap.data()};
+    });
+
+    const results = await Promise.all(promises);
+    results.forEach(pol=>{
+      if(!pol) return;
+      const cls = pol.data.lastPercentChange>0?"up":pol.data.lastPercentChange<0?"down":"flat";
+      const div=document.createElement("div");
+      div.className="card"; div.id=`holding-${pol.id}`;
       div.innerHTML=`
-        <div class="name">${polData.name}</div>
+        <div class="name">${pol.data.name}</div>
         <div class="delta ${cls}">
-          ${polData.lastPercentChange>0?"+":""}${polData.lastPercentChange.toFixed(2)}%
+          ${pol.data.lastPercentChange>0?"+":""}${pol.data.lastPercentChange.toFixed(2)}%
           <span style="font-size:0.85em; color:#666;"> today</span>
         </div>
         <div style="margin-top:6px; font-weight:500;">
-          ${polData.totalPoints>0?"+":""}${polData.totalPoints.toFixed(1)}
+          ${pol.data.totalPoints>0?"+":""}${pol.data.totalPoints.toFixed(1)}
           <span style="font-size:0.85em; color:#666;"> pts total</span>
         </div>
         <span class="remove-btn">✖</span>
       `;
-      div.querySelector(".remove-btn").onclick=async(e)=>{ e.stopPropagation(); if(confirm(`Remove ${polData.name}?`)){ await deleteDoc(doc(db,"users",uid,"holdings",polId)); } };
+      div.querySelector(".remove-btn").onclick=async(e)=>{ e.stopPropagation(); if(confirm(`Remove ${pol.data.name}?`)){ await deleteDoc(doc(db,"users",uid,"holdings",pol.id)); } };
       portfolioEl.appendChild(div);
-    }
+    });
   });
 }
 
@@ -208,31 +211,24 @@ document.getElementById("closeDraft").onclick=()=>draftModal.style.display="none
 function loadDraftUIRealtime(){
   const grid=document.getElementById("politicianGrid");
 
-  // Listen to all holdings
-  onSnapshot(collectionGroup(db,"holdings"), async (allHoldSnap)=>{
+  onSnapshot(collectionGroup(db,"holdings"), async(allHoldSnap)=>{
     const draftedIds = allHoldSnap.docs.filter(d=>d.id!=="_placeholder").map(d=>d.id);
 
-    // Fetch all politicians
     const polSnap = await getDocs(collection(db,"politicians"));
     grid.innerHTML="";
     polSnap.forEach(docSnap=>{
-      const polId=docSnap.id;
-      const data=docSnap.data();
-      const card=document.createElement("div");
-      card.className="politician-card";
+      const polId=docSnap.id; const data=docSnap.data();
+      const card=document.createElement("div"); card.className="politician-card";
       if(draftedIds.includes(polId)) card.classList.add("drafted");
-      if(draftedIds.includes(polId) && allHoldSnap.docs.find(d=>d.id===polId).ref.parent.parent.id===uid) card.classList.add("own-draft");
 
       card.innerHTML=`<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>`;
       card.onclick=async()=>{
         if(!uid){ alert("Please log in"); return;}
         if(draftedIds.includes(polId)) return;
-
         await setDoc(doc(db,"users",uid,"holdings",polId),{totalPoints:0,lastPercentChange:0,addedAt:serverTimestamp()});
-        // Remove placeholder
         const placeholderRef = doc(db,"users",uid,"holdings","_placeholder");
         const placeholderSnap = await getDoc(placeholderRef);
-        if(placeholderSnap.exists()){ await deleteDoc(placeholderRef);}
+        if(placeholderSnap.exists()) await deleteDoc(placeholderRef);
       };
       grid.appendChild(card);
     });
