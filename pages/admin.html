@@ -131,7 +131,7 @@
     async function loadPoliticians() {
   console.log("Loading politicians…");
 
-  const snap = await getDocs(collection(db, "Politicians")); // or whatever casing you chose
+  const snap = await getDocs(collection(db, "politicians")); // or whatever casing you chose
 
   console.log("Docs found:", snap.size);
 
@@ -186,7 +186,7 @@
         return;
       }
 
-      await addDoc(collection(db, "Snapshots"), {
+      await addDoc(collection(db, "snapshots"), {
         politicianId,
         percentChange,
         updateWindow,
