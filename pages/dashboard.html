@@ -84,7 +84,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-import { getFirestore, collection, doc, onSnapshot, setDoc, serverTimestamp, collectionGroup } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, serverTimestamp, collectionGroup, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 // --- Initialize Firebase ---
 const firebaseConfig = {
@@ -104,40 +104,28 @@ const uid = "user123";
 // --- Portfolio ---
 function loadUserPortfolioRealtime() {
   const portfolioEl = document.getElementById("portfolio");
-  let politiciansData = {};
-  let holdingsData = {};
-
-  // Listen to politicians
-  onSnapshot(collection(db, "politicians"), (polSnap) => {
-    politiciansData = {};
-    polSnap.forEach(docSnap => politiciansData[docSnap.id] = docSnap.data());
-    renderPortfolio();
-  });
 
   // Listen to user's holdings
-  onSnapshot(collection(db, "users", uid, "holdings"), (holdSnap) => {
-    holdingsData = {};
-    holdSnap.forEach(docSnap => holdingsData[docSnap.id] = docSnap.data());
-    renderPortfolio();
-  });
-
-  function renderPortfolio() {
+  const holdingsRef = collection(db, "users", uid, "holdings");
+  onSnapshot(holdingsRef, async (holdSnap) => {
     portfolioEl.innerHTML = "";
-    const holdingIds = Object.keys(holdingsData);
-    if (holdingIds.length === 0) {
+    if (holdSnap.empty) {
       portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`;
       return;
     }
 
-    holdingIds.forEach(polId => {
-      const polData = politiciansData[polId];
-      if (!polData) return; // politician data not loaded yet
+    for (const docSnap of holdSnap.docs) {
+      const polId = docSnap.id;
+      const polRef = doc(db, "politicians", polId);
+      const polSnap = await getDoc(polRef);
+      if (!polSnap.exists()) continue;
+      const polData = polSnap.data();
+
+      const cls = polData.lastPercentChange > 0 ? "up" : polData.lastPercentChange < 0 ? "down" : "flat";
 
       const div = document.createElement("div");
       div.className = "card";
       div.id = `holding-${polId}`;
-
-      const cls = polData.lastPercentChange > 0 ? "up" : polData.lastPercentChange < 0 ? "down" : "flat";
       div.innerHTML = `
         <div class="name">${polData.name}</div>
         <div class="delta ${cls}">
@@ -150,8 +138,8 @@ function loadUserPortfolioRealtime() {
         </div>
       `;
       portfolioEl.appendChild(div);
-    });
-  }
+    }
+  });
 }
 
 // --- Draft UI ---
@@ -161,51 +149,43 @@ document.getElementById("closeDraft").onclick = () => draftModal.style.display =
 
 function loadDraftUIRealtime() {
   const grid = document.getElementById("politicianGrid");
-  let politiciansData = {};
+
   let draftedIds = {};
 
-  // Listen to all politicians
-  onSnapshot(collection(db, "politicians"), (polSnap) => {
-    politiciansData = {};
-    polSnap.forEach(docSnap => politiciansData[docSnap.id] = docSnap.data());
-    renderDraftGrid();
-  });
-
-  // Listen to all holdings across users
+  // Listen to all holdings across all users
   onSnapshot(collectionGroup(db, "holdings"), (allHoldSnap) => {
     draftedIds = {};
     allHoldSnap.docs.forEach(d => {
-      const userId = d.ref.parent.parent.id;
-      draftedIds[d.id] = userId;
+      draftedIds[d.id] = d.ref.parent.parent.id; // user ID who drafted
     });
-    renderDraftGrid();
+
+    // Load politicians after drafted info is ready
+    onSnapshot(collection(db, "politicians"), (allPolSnap) => {
+      grid.innerHTML = "";
+      allPolSnap.forEach(docSnap => {
+        const polId = docSnap.id;
+        const data = docSnap.data();
+
+        const card = document.createElement("div");
+        card.className = "politician-card";
+
+        let draftedBy = draftedIds[polId];
+        if (draftedBy) card.classList.add("drafted");
+
+        let draftedText = draftedBy ? `<small>Drafted by ${draftedBy}</small>` : "";
+        card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>${draftedText}`;
+
+        card.onclick = async () => {
+          if (draftedBy) return;
+          await setDoc(doc(db, "users", uid, "holdings", polId), {
+            addedAt: serverTimestamp()
+          });
+          draftModal.style.display = "none";
+        };
+        grid.appendChild(card);
+      });
+    });
   });
-
-  function renderDraftGrid() {
-    grid.innerHTML = "";
-    Object.keys(politiciansData).forEach(polId => {
-      const data = politiciansData[polId];
-      const card = document.createElement("div");
-      card.className = "politician-card";
-
-      let draftedBy = draftedIds[polId];
-      if (draftedBy) card.classList.add("drafted");
-
-      let draftedText = draftedBy ? `<small>Drafted by ${draftedBy}</small>` : "";
-      card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>${draftedText}`;
-
-      card.onclick = async () => {
-        if (draftedBy) return; // already drafted
-
-        await setDoc(doc(db, "users", uid, "holdings", polId), {
-          addedAt: serverTimestamp()
-        });
-
-        draftModal.style.display = "none";
-      };
-      grid.appendChild(card);
-    });
-  }
 }
 
 // --- Initialize ---
