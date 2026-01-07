@@ -34,6 +34,7 @@ th {background:#fafafa;}
 #loginBox {max-width:300px; margin:50px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
 #loginBox input {width:100%; padding:8px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc;}
 #loginBox button {width:100%; padding:10px; border-radius:5px; border:none; background:#1a7f37; color:white; font-weight:bold; cursor:pointer;}
+#showPassBtn {margin-bottom:10px; cursor:pointer; padding:6px 8px; border-radius:5px; border:1px solid #ccc; background:#eee;}
 #logoutBtn {padding:6px 12px; background:red; color:white; border:none; border-radius:5px; cursor:pointer;}
 </style>
 </head>
@@ -53,6 +54,7 @@ th {background:#fafafa;}
   <h3>Login / Signup</h3>
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Password">
+  <button type="button" id="showPassBtn">Show Password</button>
   <button id="loginBtn">Login / Signup</button>
 </div>
 
@@ -120,11 +122,19 @@ const logoutBtn = document.getElementById("logoutBtn");
 const userEmailEl = document.getElementById("userEmail");
 const currencyEl = document.querySelector(".currency");
 const draftModal = document.getElementById("draftModal");
+const showPassBtn = document.getElementById("showPassBtn");
+const passInput = document.getElementById("password");
+
+// Show/hide password toggle
+showPassBtn.onclick = () => {
+  if (passInput.type === "password") { passInput.type = "text"; showPassBtn.textContent = "Hide Password"; }
+  else { passInput.type = "password"; showPassBtn.textContent = "Show Password"; }
+};
 
 // --- Login / Signup ---
 loginBtn.onclick = async () => {
   const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const password = passInput.value;
   if (!email || !password) { alert("Enter email and password"); return; }
 
   try {
@@ -146,16 +156,11 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     uid = user.uid;
 
-    // --- Ensure Firestore user doc exists ---
+    // Ensure user document exists
     const userRef = doc(db, "users", uid);
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) {
-      // Create user document
-      await setDoc(userRef, {
-        email: user.email,
-        createdAt: serverTimestamp(),
-        currency: 0
-      });
+      await setDoc(userRef, { email: user.email, createdAt: serverTimestamp(), currency: 0 });
     }
 
     loginBox.style.display = "none";
@@ -173,7 +178,6 @@ onAuthStateChanged(auth, async (user) => {
     userEmailEl.textContent = "Not signed in";
   }
 });
-
 
 // --- Portfolio ---
 function loadUserPortfolioRealtime() {
@@ -250,7 +254,7 @@ function loadDraftUIRealtime() {
         card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>${draftedText}`;
 
         card.onclick = async () => {
-          if (draftedBy) return;
+          if (draftedBy) return; // already drafted
           await setDoc(doc(db, "users", uid, "holdings", polId), {
             totalPoints: 0,
             lastPercentChange: 0,
