@@ -1,208 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Capitol League</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f2f2f2;
-      color: #222;
-    }
+<meta charset="UTF-8">
+<title>Capitol League</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {margin:0; font-family: system-ui, sans-serif; background:#f2f2f2; color:#222;}
+  .topbar {background:#d8c8a0; padding:12px 20px; display:flex; justify-content:space-between; align-items:center;}
+  .currency {margin-right:20px;}
+  .container {padding:20px; max-width:1200px; margin:auto;}
+  h2 {margin-top:0;}
 
-    /* Top Bar */
-    .topbar {
-      background: #d8c8a0;
-      padding: 12px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-    }
+  /* Portfolio */
+  .portfolio {display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:30px;}
+  .card {background:white; border-radius:10px; padding:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+  .card .name {font-weight:600; margin-bottom:6px;}
+  .delta {font-size:1.2em; font-weight:600;}
+  .up { color:#1a7f37; }
+  .down { color:#b42318; }
+  .flat { color:#666; }
 
-    .currency {
-      margin-right: 20px;
-    }
+  /* Bottom */
+  .bottom {display:grid; grid-template-columns:2fr 1fr; gap:20px;}
+  table {width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+  th, td {padding:10px; text-align:left; border-bottom:1px solid #eee;}
+  th {background:#fafafa;}
+  .status {background:white; border-radius:10px; padding:16px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
 
-    /* Layout */
-    .container {
-      padding: 20px;
-      max-width: 1200px;
-      margin: auto;
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-
-    /* Portfolio */
-    .portfolio {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 16px;
-      margin-bottom: 30px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 10px;
-      padding: 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-
-    .card .name {
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .delta {
-      font-size: 1.2em;
-      font-weight: 600;
-    }
-
-    .up { color: #1a7f37; }
-    .down { color: #b42318; }
-    .flat { color: #666; }
-
-    /* Bottom section */
-    .bottom {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 20px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-
-    th, td {
-      padding: 10px;
-      text-align: left;
-      border-bottom: 1px solid #eee;
-    }
-
-    th {
-      background: #fafafa;
-    }
-
-    .status {
-      background: white;
-      border-radius: 10px;
-      padding: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-  </style>
+  /* Draft Modal */
+  .modal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;}
+  .modal-content {background:#fff; padding:20px; border-radius:10px; max-width:800px; width:90%; max-height:80%; overflow:auto;}
+  .politician-grid {display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;}
+  .politician-card {border:1px solid #ccc; border-radius:8px; padding:8px; cursor:pointer; transition:0.2s;}
+  .politician-card:hover {box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+  .drafted {opacity:0.5; cursor:default; pointer-events:none; background:#eee;}
+</style>
 </head>
 <body>
 
-  <div class="topbar">
-    <div>Capitol League</div>
+<div class="topbar">
+  <div>Capitol League</div>
+  <div>
+    <span class="currency">🪙 120</span>
+    <span>Profile</span>
+  </div>
+</div>
+
+<div class="container">
+  <h2>Your Portfolio</h2>
+  <div class="portfolio" id="portfolio"></div>
+  <button id="openDraft">Draft a Politician</button>
+
+  <div class="bottom">
     <div>
-      <span class="currency">🪙 120</span>
-      <span>Profile</span>
-    </div>
-  </div>
-
-  <div class="container">
-    <h2>Your Portfolio</h2>
-
-    <div class="portfolio" id="portfolio">
-      <!-- Cards injected by JS -->
+      <h2>Leaderboard</h2>
+      <table>
+        <thead>
+          <tr><th>Rank</th><th>Player</th><th>Total</th><th>Today</th></tr>
+        </thead>
+        <tbody id="leaderboard"></tbody>
+      </table>
     </div>
 
-    <div class="bottom">
-      <div>
-        <h2>Leaderboard</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player</th>
-              <th>Total</th>
-              <th>Today</th>
-            </tr>
-          </thead>
-          <tbody id="leaderboard">
-          </tbody>
-        </table>
-      </div>
-
-      <div>
-        <h2>Daily Status</h2>
-        <div class="status">
-          <p><strong>Last Update:</strong> AM</p>
-          <p><strong>Next Update:</strong> 5:00 PM</p>
-        </div>
+    <div>
+      <h2>Daily Status</h2>
+      <div class="status">
+        <p><strong>Last Update:</strong> AM</p>
+        <p><strong>Next Update:</strong> 5:00 PM</p>
       </div>
     </div>
   </div>
+</div>
 
-  <script>
-    // TEMP MOCK DATA (replaced later with Firestore)
-    const portfolio = [
-    { name: "Jane Doe", percentToday: 0.42, totalPoints: 18.6 },
-    { name: "John Smith", percentToday: -0.18, totalPoints: 9.3 },
-    { name: "Alex Kim", percentToday: 0.00, totalPoints: 12.1 },
-    { name: "Maria Lopez", percentToday: 0.27, totalPoints: 21.4 },
-    { name: "Chris Patel", percentToday: 0.61, totalPoints: 15.8 }
-    ];
+<!-- Draft Modal -->
+<div class="modal" id="draftModal">
+  <div class="modal-content">
+    <h3>Select a Politician</h3>
+    <div class="politician-grid" id="politicianGrid"></div>
+    <button id="closeDraft">Close</button>
+  </div>
+</div>
 
-    const leaderboard = [
-      { rank: 1, name: "Alex", total: 128, today: 4.2 },
-      { rank: 2, name: "You", total: 120, today: 2.1 },
-      { rank: 3, name: "Sam", total: 115, today: -0.4 }
-    ];
+<script type="module">
+import { getFirestore, collection, doc, getDocs, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 
-   const portfolioEl = document.getElementById("portfolio");
+// --- Initialize Firebase ---
+const firebaseConfig = {
+  // your config here
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-   portfolio.forEach(p => {
-     const div = document.createElement("div");
-     div.className = "card";
-    
-     const cls =
-       p.percentToday > 0 ? "up" :
-       p.percentToday < 0 ? "down" :
-       "flat";
-    
+// --- Mock user ID for testing ---
+const uid = "user123";
+
+// --- Load user portfolio ---
+async function loadUserPortfolio() {
+  const portfolioEl = document.getElementById("portfolio");
+  portfolioEl.innerHTML = "";
+
+  const holdingsRef = collection(db, "users", uid, "holdings");
+  const holdingsSnap = await getDocs(holdingsRef);
+
+  if (holdingsSnap.empty) {
+    portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`;
+    return;
+  }
+
+  holdingsSnap.forEach(async docSnap => {
+    const data = docSnap.data();
+    const polRef = doc(db, "politicians", docSnap.id);
+    const polSnap = await getDoc(polRef);
+    if (!polSnap.exists()) return;
+
+    const polData = polSnap.data();
+    const div = document.createElement("div");
+    div.className = "card";
+
+    const cls = data.lastPercentChange > 0 ? "up" : data.lastPercentChange < 0 ? "down" : "flat";
     div.innerHTML = `
-       <div class="name">${p.name}</div>
-       <div class="delta ${cls}">
-         ${p.percentToday > 0 ? "+" : ""}${p.percentToday.toFixed(2)}%
-         <span style="font-size:0.85em; color:#666;"> today</span>
-       </div>
-       <hr style="border:none; border-top:1px solid #eee; margin:8px 0;">
-       <div style="margin-top:6px; font-weight:500;">
-         ${p.totalPoints > 0 ? "+" : ""}${p.totalPoints.toFixed(1)}
-         <span style="font-size:0.85em; color:#666;"> pts total</span>
-       </div>
-      `;
-    
-      portfolioEl.appendChild(div);
-    });
+      <div class="name">${polData.name}</div>
+      <div class="delta ${cls}">
+        ${data.lastPercentChange > 0 ? "+" : ""}${data.lastPercentChange.toFixed(2)}%
+        <span style="font-size:0.85em; color:#666;"> today</span>
+      </div>
+      <div style="margin-top:6px; font-weight:500;">
+        ${data.totalPoints > 0 ? "+" : ""}${data.totalPoints.toFixed(1)}
+        <span style="font-size:0.85em; color:#666;"> pts total</span>
+      </div>
+    `;
+    portfolioEl.appendChild(div);
+  });
+}
 
+// --- Draft UI ---
+const draftModal = document.getElementById("draftModal");
+document.getElementById("openDraft").onclick = () => draftModal.style.display = "flex";
+document.getElementById("closeDraft").onclick = () => draftModal.style.display = "none";
 
-    const leaderboardEl = document.getElementById("leaderboard");
-    leaderboard.forEach(l => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${l.rank}</td>
-        <td>${l.name}</td>
-        <td>${l.total}</td>
-        <td class="${l.today > 0 ? "up" : l.today < 0 ? "down" : "flat"}">
-          ${l.today > 0 ? "+" : ""}${l.today}
-        </td>
-      `;
-      leaderboardEl.appendChild(tr);
-    });
-  </script>
+async function loadDraftUI() {
+  const grid = document.getElementById("politicianGrid");
+  grid.innerHTML = "";
+
+  // Load all politicians
+  const allPolSnap = await getDocs(collection(db, "politicians"));
+  // Load user's holdings to check which ones are already drafted
+  const userHoldingsSnap = await getDocs(collection(db, "users", uid, "holdings"));
+  const draftedIds = userHoldingsSnap.docs.map(d => d.id);
+
+  allPolSnap.forEach(docSnap => {
+    const data = docSnap.data();
+    const card = document.createElement("div");
+    card.className = "politician-card";
+    if (draftedIds.includes(docSnap.id)) card.classList.add("drafted");
+
+    card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>`;
+    card.onclick = async () => {
+      if (draftedIds.includes(docSnap.id)) return;
+
+      // Add to holdings subcollection
+      await setDoc(doc(db, "users", uid, "holdings", docSnap.id), {
+        totalPoints: 0,
+        lastPercentChange: 0,
+        addedAt: serverTimestamp()
+      });
+
+      alert(`You drafted ${data.name}!`);
+      draftModal.style.display = "none";
+      loadUserPortfolio(); // refresh dashboard
+      loadDraftUI();       // refresh draft UI to mark drafted
+    };
+    grid.appendChild(card);
+  });
+}
+
+// --- Initialize ---
+loadUserPortfolio();
+loadDraftUI();
+</script>
 
 </body>
 </html>
+
 
