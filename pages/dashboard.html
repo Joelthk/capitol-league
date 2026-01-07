@@ -1,1 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Capitol League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f2f2f2;
+      color: #222;
+    }
+
+    /* Top Bar */
+    .topbar {
+      background: #d8c8a0;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+
+    .currency {
+      margin-right: 20px;
+    }
+
+    /* Layout */
+    .container {
+      padding: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    /* Portfolio */
+    .portfolio {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .card .name {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .delta {
+      font-size: 1.2em;
+      font-weight: 600;
+    }
+
+    .up { color: #1a7f37; }
+    .down { color: #b42318; }
+    .flat { color: #666; }
+
+    /* Bottom section */
+    .bottom {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background: #fafafa;
+    }
+
+    .status {
+      background: white;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div>Capitol League</div>
+    <div>
+      <span class="currency">🪙 120</span>
+      <span>Profile</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>Your Portfolio</h2>
+
+    <div class="portfolio" id="portfolio">
+      <!-- Cards injected by JS -->
+    </div>
+
+    <div class="bottom">
+      <div>
+        <h2>Leaderboard</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Total</th>
+              <th>Today</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard">
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h2>Daily Status</h2>
+        <div class="status">
+          <p><strong>Last Update:</strong> AM</p>
+          <p><strong>Next Update:</strong> 5:00 PM</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // TEMP MOCK DATA (replaced later with Firestore)
+    const portfolio = [
+      { name: "Jane Doe", delta: 3.2 },
+      { name: "John Smith", delta: -1.1 },
+      { name: "Alex Kim", delta: 0.4 },
+      { name: "Maria Lopez", delta: 0.0 },
+      { name: "Chris Patel", delta: 2.7 }
+    ];
+
+    const leaderboard = [
+      { rank: 1, name: "Alex", total: 128, today: 4.2 },
+      { rank: 2, name: "You", total: 120, today: 2.1 },
+      { rank: 3, name: "Sam", total: 115, today: -0.4 }
+    ];
+
+    const portfolioEl = document.getElementById("portfolio");
+    portfolio.forEach(p => {
+      const div = document.createElement("div");
+      div.className = "card";
+
+      let cls = p.delta > 0 ? "up" : p.delta < 0 ? "down" : "flat";
+
+      div.innerHTML = `
+        <div class="name">${p.name}</div>
+        <div class="delta ${cls}">
+          ${p.delta > 0 ? "+" : ""}${p.delta}
+        </div>
+      `;
+      portfolioEl.appendChild(div);
+    });
+
+    const leaderboardEl = document.getElementById("leaderboard");
+    leaderboard.forEach(l => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${l.rank}</td>
+        <td>${l.name}</td>
+        <td>${l.total}</td>
+        <td class="${l.today > 0 ? "up" : l.today < 0 ? "down" : "flat"}">
+          ${l.today > 0 ? "+" : ""}${l.today}
+        </td>
+      `;
+      leaderboardEl.appendChild(tr);
+    });
+  </script>
+
+</body>
+</html>
 
