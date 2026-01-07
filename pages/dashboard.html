@@ -5,44 +5,36 @@
 <title>Capitol League</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body {margin:0; font-family: system-ui, sans-serif; background:#f2f2f2; color:#222;}
-  .topbar {background:#d8c8a0; padding:12px 20px; display:flex; justify-content:space-between; align-items:center;}
-  .currency {margin-right:20px;}
-  .container {padding:20px; max-width:1200px; margin:auto;}
-  h2 {margin-top:0;}
-
-  /* Portfolio */
-  .portfolio {display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:30px;}
-  .card {background:white; border-radius:10px; padding:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06); position:relative;}
-  .card .name {font-weight:600; margin-bottom:6px;}
-  .delta {font-size:1.2em; font-weight:600;}
-  .up { color:#1a7f37; }
-  .down { color:#b42318; }
-  .flat { color:#666; }
-  .remove-btn {position:absolute; top:6px; right:6px; cursor:pointer; color:red; font-weight:bold;}
-
-  /* Bottom */
-  .bottom {display:grid; grid-template-columns:2fr 1fr; gap:20px;}
-  table {width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
-  th, td {padding:10px; text-align:left; border-bottom:1px solid #eee;}
-  th {background:#fafafa;}
-  .status {background:white; border-radius:10px; padding:16px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
-
-  /* Draft Modal */
-  .modal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;}
-  .modal-content {background:#fff; padding:20px; border-radius:10px; max-width:800px; width:90%; max-height:80%; overflow:auto;}
-  .politician-grid {display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;}
-  .politician-card {border:1px solid #ccc; border-radius:8px; padding:8px; cursor:pointer; transition:0.2s; position:relative;}
-  .politician-card:hover {box-shadow:0 4px 12px rgba(0,0,0,0.1);}
-  .drafted {opacity:0.5; cursor:default; pointer-events:none; background:#eee;}
-  .own-draft {border:2px solid #1a7f37;}
-  .drafted small {display:block; color:#666; margin-top:4px;}
-
-  /* Login UI */
-  #loginBox {max-width:300px; margin:50px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
-  #loginBox input {width:100%; padding:8px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc;}
-  #loginBox button {width:100%; padding:10px; border-radius:5px; border:none; background:#1a7f37; color:white; font-weight:bold; cursor:pointer;}
-  #logoutBtn {padding:6px 12px; background:red; color:white; border:none; border-radius:5px; cursor:pointer;}
+body {margin:0; font-family: system-ui, sans-serif; background:#f2f2f2; color:#222;}
+.topbar {background:#d8c8a0; padding:12px 20px; display:flex; justify-content:space-between; align-items:center;}
+.currency {margin-right:20px;}
+.container {padding:20px; max-width:1200px; margin:auto;}
+h2 {margin-top:0;}
+.portfolio {display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:30px;}
+.card {background:white; border-radius:10px; padding:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06); position:relative;}
+.card .name {font-weight:600; margin-bottom:6px;}
+.delta {font-size:1.2em; font-weight:600;}
+.up { color:#1a7f37; }
+.down { color:#b42318; }
+.flat { color:#666; }
+.remove-btn {position:absolute; top:6px; right:6px; cursor:pointer; color:red; font-weight:bold;}
+.bottom {display:grid; grid-template-columns:2fr 1fr; gap:20px;}
+table {width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+th, td {padding:10px; text-align:left; border-bottom:1px solid #eee;}
+th {background:#fafafa;}
+.status {background:white; border-radius:10px; padding:16px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+.modal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;}
+.modal-content {background:#fff; padding:20px; border-radius:10px; max-width:800px; width:90%; max-height:80%; overflow:auto;}
+.politician-grid {display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;}
+.politician-card {border:1px solid #ccc; border-radius:8px; padding:8px; cursor:pointer; transition:0.2s; position:relative;}
+.politician-card:hover {box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+.drafted {opacity:0.5; cursor:default; pointer-events:none; background:#eee;}
+.own-draft {border:2px solid #1a7f37;}
+.politician-card small {display:block; color:#666; margin-top:4px;}
+#loginBox {max-width:300px; margin:50px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+#loginBox input {width:100%; padding:8px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc;}
+#loginBox button {width:100%; padding:10px; border-radius:5px; border:none; background:#1a7f37; color:white; font-weight:bold; cursor:pointer;}
+#logoutBtn {padding:6px 12px; background:red; color:white; border:none; border-radius:5px; cursor:pointer;}
 </style>
 </head>
 <body>
@@ -105,7 +97,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebas
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp, collectionGroup, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-// --- Firebase config ---
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCjotIoBJtRrp3p3q6s9TSdZ044pAQoB20",
   authDomain: "capitol-league.firebaseapp.com",
@@ -120,7 +112,7 @@ const auth = getAuth(app);
 
 let uid = null;
 
-// UI Elements
+// UI elements
 const loginBox = document.getElementById("loginBox");
 const container = document.querySelector(".container");
 const loginBtn = document.getElementById("loginBtn");
@@ -133,15 +125,17 @@ const draftModal = document.getElementById("draftModal");
 loginBtn.onclick = async () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
+  if (!email || !password) { alert("Enter email and password"); return; }
+
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      .catch(async err => {
-        if (err.code === "auth/user-not-found") {
-          return await createUserWithEmailAndPassword(auth, email, password);
-        } else throw err;
-      });
-    console.log("Signed in as", userCredential.user.uid);
-  } catch(e) { alert(e.message); }
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch(err) {
+    if (err.code === "auth/user-not-found") {
+      try { await createUserWithEmailAndPassword(auth, email, password); }
+      catch(e) { alert("Signup failed: " + e.message); }
+    } else if (err.code === "auth/wrong-password") { alert("Wrong password."); }
+    else { alert("Login failed: " + err.message); }
+  }
 };
 
 // --- Logout ---
@@ -202,7 +196,7 @@ function loadUserPortfolioRealtime() {
 
       div.querySelector(".remove-btn").onclick = async (e) => {
         e.stopPropagation();
-        if (confirm(`Remove ${polData.name} from your holdings?`)) {
+        if (confirm(`Remove ${polData.name}?`)) {
           await deleteDoc(doc(db, "users", uid, "holdings", polId));
         }
       };
@@ -256,6 +250,5 @@ function loadDraftUIRealtime() {
   });
 }
 </script>
-
 </body>
 </html>
