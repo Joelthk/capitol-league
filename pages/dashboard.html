@@ -102,44 +102,56 @@ const db = getFirestore(app);
 const uid = "user123";
 
 // --- Load user portfolio ---
-async function loadUserPortfolio() {
+import { onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+function loadUserPortfolioRealtime() {
   const portfolioEl = document.getElementById("portfolio");
   portfolioEl.innerHTML = "";
 
+  // Listen to the user's holdings subcollection
   const holdingsRef = collection(db, "users", uid, "holdings");
-  const holdingsSnap = await getDocs(holdingsRef);
+  onSnapshot(holdingsRef, async (snapshot) => {
+    portfolioEl.innerHTML = ""; // clear old cards
+    if (snapshot.empty) {
+      portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`;
+      return;
+    }
 
-  if (holdingsSnap.empty) {
-    portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`;
-    return;
-  }
+    // For each holding, get latest politician info
+    snapshot.forEach(async docSnap => {
+      const data = docSnap.data();
+      const polRef = doc(db, "politicians", docSnap.id);
 
-  holdingsSnap.forEach(async docSnap => {
-    const data = docSnap.data();
-    const polRef = doc(db, "politicians", docSnap.id);
-    const polSnap = await getDoc(polRef);
-    if (!polSnap.exists()) return;
+      // Listen to the politician document for real-time updates
+      onSnapshot(polRef, (polSnap) => {
+        if (!polSnap.exists()) return;
+        const polData = polSnap.data();
 
-    const polData = polSnap.data();
-    const div = document.createElement("div");
-    div.className = "card";
+        // Check if a card already exists for this politician
+        let div = document.getElementById(`holding-${docSnap.id}`);
+        if (!div) {
+          div = document.createElement("div");
+          div.className = "card";
+          div.id = `holding-${docSnap.id}`;
+          portfolioEl.appendChild(div);
+        }
 
-    const cls = data.lastPercentChange > 0 ? "up" : data.lastPercentChange < 0 ? "down" : "flat";
-    div.innerHTML = `
-      <div class="name">${polData.name}</div>
-      <div class="delta ${cls}">
-        ${data.lastPercentChange > 0 ? "+" : ""}${data.lastPercentChange.toFixed(2)}%
-        <span style="font-size:0.85em; color:#666;"> today</span>
-      </div>
-      <div style="margin-top:6px; font-weight:500;">
-        ${data.totalPoints > 0 ? "+" : ""}${data.totalPoints.toFixed(1)}
-        <span style="font-size:0.85em; color:#666;"> pts total</span>
-      </div>
-    `;
-    portfolioEl.appendChild(div);
+        const cls = data.lastPercentChange > 0 ? "up" : data.lastPercentChange < 0 ? "down" : "flat";
+        div.innerHTML = `
+          <div class="name">${polData.name}</div>
+          <div class="delta ${cls}">
+            ${data.lastPercentChange > 0 ? "+" : ""}${data.lastPercentChange.toFixed(2)}%
+            <span style="font-size:0.85em; color:#666;"> today</span>
+          </div>
+          <div style="margin-top:6px; font-weight:500;">
+            ${data.totalPoints > 0 ? "+" : ""}${data.totalPoints.toFixed(1)}
+            <span style="font-size:0.85em; color:#666;"> pts total</span>
+          </div>
+        `;
+      });
+    });
   });
 }
-
 // --- Draft UI ---
 const draftModal = document.getElementById("draftModal");
 document.getElementById("openDraft").onclick = () => draftModal.style.display = "flex";
@@ -147,50 +159,50 @@ document.getElementById("closeDraft").onclick = () => draftModal.style.display =
 
 import { query, collectionGroup } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-async function loadDraftUI() {
+async function loadDraftUIRealtime() {
   const grid = document.getElementById("politicianGrid");
   grid.innerHTML = "";
 
-  // Load all politicians
-  const allPolSnap = await getDocs(collection(db, "politicians"));
+  // Listen to all holdings across all users to block drafted politicians
+  onSnapshot(collectionGroup(db, "holdings"), async (allHoldingsSnap) => {
+    const draftedIds = allHoldingsSnap.docs.map(d => d.id);
 
-  // Load all holdings across all users to block already drafted politicians
-  const allHoldingsSnap = await getDocs(collectionGroup(db, "holdings"));
-  const draftedIds = allHoldingsSnap.docs.map(d => d.id);
+    // Listen to all politicians
+    onSnapshot(collection(db, "politicians"), (allPolSnap) => {
+      grid.innerHTML = "";
+      allPolSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        const card = document.createElement("div");
+        card.className = "politician-card";
 
-  allPolSnap.forEach(docSnap => {
-    const data = docSnap.data();
-    const card = document.createElement("div");
-    card.className = "politician-card";
+        // Disable if drafted by anyone
+        if (draftedIds.includes(docSnap.id)) card.classList.add("drafted");
 
-    // Disable card if already drafted by anyone
-    if (draftedIds.includes(docSnap.id)) card.classList.add("drafted");
+        card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>`;
+        card.onclick = async () => {
+          if (draftedIds.includes(docSnap.id)) return;
 
-    card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>`;
-    card.onclick = async () => {
-      if (draftedIds.includes(docSnap.id)) return; // already drafted
+          await setDoc(doc(db, "users", uid, "holdings", docSnap.id), {
+            totalPoints: 0,
+            lastPercentChange: 0,
+            addedAt: serverTimestamp()
+          });
 
-      // Add to current user's holdings
-      await setDoc(doc(db, "users", uid, "holdings", docSnap.id), {
-        totalPoints: 0,
-        lastPercentChange: 0,
-        addedAt: serverTimestamp()
+          alert(`You drafted ${data.name}!`);
+          draftModal.style.display = "none";
+
+          // No need to manually reload; onSnapshot will update UI automatically
+        };
+        grid.appendChild(card);
       });
-
-      alert(`You drafted ${data.name}!`);
-      draftModal.style.display = "none";
-
-      // Refresh UI
-      loadUserPortfolio();
-      loadDraftUI();
-    };
-    grid.appendChild(card);
+    });
   });
 }
 
+
 // --- Initialize ---
-loadUserPortfolio();
-loadDraftUI();
+loadUserPortfolioRealtime();
+loadDraftUIRealtime();
 </script>
 
 </body>
