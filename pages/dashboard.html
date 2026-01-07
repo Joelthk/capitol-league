@@ -13,12 +13,14 @@
 
   /* Portfolio */
   .portfolio {display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:30px;}
-  .card {background:white; border-radius:10px; padding:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+  .card {background:white; border-radius:10px; padding:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06); position:relative;}
   .card .name {font-weight:600; margin-bottom:6px;}
   .delta {font-size:1.2em; font-weight:600;}
   .up { color:#1a7f37; }
   .down { color:#b42318; }
   .flat { color:#666; }
+
+  .remove-btn {position:absolute; top:6px; right:6px; cursor:pointer; color:red; font-weight:bold;}
 
   /* Bottom */
   .bottom {display:grid; grid-template-columns:2fr 1fr; gap:20px;}
@@ -34,6 +36,7 @@
   .politician-card {border:1px solid #ccc; border-radius:8px; padding:8px; cursor:pointer; transition:0.2s; position:relative;}
   .politician-card:hover {box-shadow:0 4px 12px rgba(0,0,0,0.1);}
   .drafted {opacity:0.5; cursor:default; pointer-events:none; background:#eee;}
+  .own-draft {border:2px solid #1a7f37;}
   .drafted small {display:block; color:#666; margin-top:4px;}
 </style>
 </head>
@@ -84,7 +87,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-import { getFirestore, collection, doc, onSnapshot, setDoc, serverTimestamp, collectionGroup, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp, collectionGroup, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 // --- Initialize Firebase ---
 const firebaseConfig = {
@@ -105,7 +108,6 @@ const uid = "user123";
 function loadUserPortfolioRealtime() {
   const portfolioEl = document.getElementById("portfolio");
 
-  // Listen to user's holdings
   const holdingsRef = collection(db, "users", uid, "holdings");
   onSnapshot(holdingsRef, async (holdSnap) => {
     portfolioEl.innerHTML = "";
@@ -136,7 +138,17 @@ function loadUserPortfolioRealtime() {
           ${polData.totalPoints > 0 ? "+" : ""}${polData.totalPoints.toFixed(1)}
           <span style="font-size:0.85em; color:#666;"> pts total</span>
         </div>
+        <span class="remove-btn">✖</span>
       `;
+
+      // Remove button for testing
+      div.querySelector(".remove-btn").onclick = async (e) => {
+        e.stopPropagation();
+        if (confirm(`Remove ${polData.name} from your holdings?`)) {
+          await deleteDoc(doc(db, "users", uid, "holdings", polId));
+        }
+      };
+
       portfolioEl.appendChild(div);
     }
   });
@@ -168,18 +180,19 @@ function loadDraftUIRealtime() {
 
         const card = document.createElement("div");
         card.className = "politician-card";
+        card.dataset.polId = polId;
 
         let draftedBy = draftedIds[polId];
         if (draftedBy) card.classList.add("drafted");
+        if (draftedBy === uid) card.classList.add("own-draft");
 
         let draftedText = draftedBy ? `<small>Drafted by ${draftedBy}</small>` : "";
         card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>${draftedText}`;
 
+        // Click handler
         card.onclick = async () => {
-          if (draftedBy) return;
-          await setDoc(doc(db, "users", uid, "holdings", polId), {
-            addedAt: serverTimestamp()
-          });
+          if (draftedBy) return; // already drafted
+          await setDoc(doc(db, "users", uid, "holdings", polId), { addedAt: serverTimestamp() });
           draftModal.style.display = "none";
         };
         grid.appendChild(card);
