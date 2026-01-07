@@ -118,15 +118,19 @@
     async function loadPoliticians() {
       const snap = await getDocs(collection(db, "politicians"));
       const select = document.getElementById("politicianSelect");
+    
       select.innerHTML = "";
-
-      snap.forEach(doc => {
+    
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+    
         const opt = document.createElement("option");
-        opt.value = doc.id;
-        opt.textContent = doc.data().name;
+        opt.value = docSnap.id;          // ← politician ID
+        opt.textContent = data.name;     // ← display name
         select.appendChild(opt);
       });
     }
+
 
     // ADMIN UNLOCK
     window.unlockAdmin = async function () {
