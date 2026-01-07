@@ -56,6 +56,7 @@
   </div>
 </div>
 
+<!-- Login -->
 <div id="loginBox">
   <h3>Login / Signup</h3>
   <input type="email" id="email" placeholder="Email">
@@ -63,6 +64,7 @@
   <button id="loginBtn">Login / Signup</button>
 </div>
 
+<!-- Main dashboard -->
 <div class="container" style="display:none;">
   <h2>Your Portfolio</h2>
   <div class="portfolio" id="portfolio"></div>
@@ -103,7 +105,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebas
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp, collectionGroup, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-// --- Firebase ---
+// --- Firebase config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCjotIoBJtRrp3p3q6s9TSdZ044pAQoB20",
   authDomain: "capitol-league.firebaseapp.com",
@@ -118,13 +120,14 @@ const auth = getAuth(app);
 
 let uid = null;
 
-// --- UI Elements ---
+// UI Elements
 const loginBox = document.getElementById("loginBox");
 const container = document.querySelector(".container");
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const userEmailEl = document.getElementById("userEmail");
 const currencyEl = document.querySelector(".currency");
+const draftModal = document.getElementById("draftModal");
 
 // --- Login / Signup ---
 loginBtn.onclick = async () => {
@@ -133,7 +136,6 @@ loginBtn.onclick = async () => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password)
       .catch(async err => {
-        // If login fails, try creating account
         if (err.code === "auth/user-not-found") {
           return await createUserWithEmailAndPassword(auth, email, password);
         } else throw err;
@@ -142,24 +144,26 @@ loginBtn.onclick = async () => {
   } catch(e) { alert(e.message); }
 };
 
+// --- Logout ---
 logoutBtn.onclick = async () => { await signOut(auth); };
 
 // --- Auth state ---
 onAuthStateChanged(auth, (user) => {
   if (user) {
     uid = user.uid;
-    userEmailEl.textContent = user.email;
-    logoutBtn.style.display = "inline-block";
     loginBox.style.display = "none";
     container.style.display = "block";
+    userEmailEl.textContent = user.email;
+    logoutBtn.style.display = "inline-block";
+
     loadUserPortfolioRealtime();
     loadDraftUIRealtime();
   } else {
     uid = null;
-    userEmailEl.textContent = "Not signed in";
-    logoutBtn.style.display = "none";
     loginBox.style.display = "block";
     container.style.display = "none";
+    logoutBtn.style.display = "none";
+    userEmailEl.textContent = "Not signed in";
   }
 });
 
@@ -209,7 +213,6 @@ function loadUserPortfolioRealtime() {
 }
 
 // --- Draft UI ---
-const draftModal = document.getElementById("draftModal");
 document.getElementById("openDraft").onclick = () => draftModal.style.display = "flex";
 document.getElementById("closeDraft").onclick = () => draftModal.style.display = "none";
 
@@ -240,7 +243,11 @@ function loadDraftUIRealtime() {
 
         card.onclick = async () => {
           if (draftedBy) return;
-          await setDoc(doc(db, "users", uid, "holdings", polId), { addedAt: serverTimestamp() });
+          await setDoc(doc(db, "users", uid, "holdings", polId), {
+            totalPoints: 0,
+            lastPercentChange: 0,
+            addedAt: serverTimestamp()
+          });
         };
 
         grid.appendChild(card);
@@ -249,5 +256,6 @@ function loadDraftUIRealtime() {
   });
 }
 </script>
+
 </body>
 </html>
