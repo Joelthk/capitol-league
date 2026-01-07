@@ -98,13 +98,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// --- Mock user ID for testing ---
+// --- Mock user ID ---
 const uid = "user123";
 
 // --- Portfolio ---
 function loadUserPortfolioRealtime() {
   const portfolioEl = document.getElementById("portfolio");
-
   let politiciansData = {};
   let holdingsData = {};
 
@@ -115,7 +114,7 @@ function loadUserPortfolioRealtime() {
     renderPortfolio();
   });
 
-  // Listen to user holdings
+  // Listen to user's holdings
   onSnapshot(collection(db, "users", uid, "holdings"), (holdSnap) => {
     holdingsData = {};
     holdSnap.forEach(docSnap => holdingsData[docSnap.id] = docSnap.data());
@@ -131,23 +130,22 @@ function loadUserPortfolioRealtime() {
     }
 
     holdingIds.forEach(polId => {
-      const data = holdingsData[polId];
       const polData = politiciansData[polId];
-      if (!polData) return;
+      if (!polData) return; // politician data not loaded yet
 
       const div = document.createElement("div");
       div.className = "card";
       div.id = `holding-${polId}`;
 
-      const cls = data.lastPercentChange > 0 ? "up" : data.lastPercentChange < 0 ? "down" : "flat";
+      const cls = polData.lastPercentChange > 0 ? "up" : polData.lastPercentChange < 0 ? "down" : "flat";
       div.innerHTML = `
         <div class="name">${polData.name}</div>
         <div class="delta ${cls}">
-          ${data.lastPercentChange > 0 ? "+" : ""}${data.lastPercentChange.toFixed(2)}%
+          ${polData.lastPercentChange > 0 ? "+" : ""}${polData.lastPercentChange.toFixed(2)}%
           <span style="font-size:0.85em; color:#666;"> today</span>
         </div>
         <div style="margin-top:6px; font-weight:500;">
-          ${data.totalPoints > 0 ? "+" : ""}${data.totalPoints.toFixed(1)}
+          ${polData.totalPoints > 0 ? "+" : ""}${polData.totalPoints.toFixed(1)}
           <span style="font-size:0.85em; color:#666;"> pts total</span>
         </div>
       `;
@@ -163,10 +161,9 @@ document.getElementById("closeDraft").onclick = () => draftModal.style.display =
 
 function loadDraftUIRealtime() {
   const grid = document.getElementById("politicianGrid");
-
   let politiciansData = {};
   let draftedIds = {};
-  
+
   // Listen to all politicians
   onSnapshot(collection(db, "politicians"), (polSnap) => {
     politiciansData = {};
@@ -174,9 +171,9 @@ function loadDraftUIRealtime() {
     renderDraftGrid();
   });
 
-  // Listen to all holdings across all users
+  // Listen to all holdings across users
   onSnapshot(collectionGroup(db, "holdings"), (allHoldSnap) => {
-    draftedIds = {}; // map of polId -> userId
+    draftedIds = {};
     allHoldSnap.docs.forEach(d => {
       const userId = d.ref.parent.parent.id;
       draftedIds[d.id] = userId;
@@ -190,24 +187,22 @@ function loadDraftUIRealtime() {
       const data = politiciansData[polId];
       const card = document.createElement("div");
       card.className = "politician-card";
-      if (draftedIds[polId]) card.classList.add("drafted");
 
-      let draftedText = draftedIds[polId] ? `<small>Drafted by ${draftedIds[polId]}</small>` : "";
+      let draftedBy = draftedIds[polId];
+      if (draftedBy) card.classList.add("drafted");
+
+      let draftedText = draftedBy ? `<small>Drafted by ${draftedBy}</small>` : "";
       card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>${draftedText}`;
 
       card.onclick = async () => {
-        if (draftedIds[polId]) return;
+        if (draftedBy) return; // already drafted
 
         await setDoc(doc(db, "users", uid, "holdings", polId), {
-          totalPoints: 0,
-          lastPercentChange: 0,
           addedAt: serverTimestamp()
         });
 
-        alert(`You drafted ${data.name}!`);
         draftModal.style.display = "none";
       };
-
       grid.appendChild(card);
     });
   }
@@ -218,6 +213,5 @@ loadUserPortfolioRealtime();
 loadDraftUIRealtime();
 
 </script>
-
 </body>
 </html>
