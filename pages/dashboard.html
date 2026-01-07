@@ -158,12 +158,19 @@ logoutBtn.onclick = async () => {
   passInput.value = "";
 };
 
-// Ensure user document exists
+// Ensure user document and holdings subcollection exist
 async function ensureUserDoc(uid, email) {
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) {
     await setDoc(userRef, { email, createdAt: serverTimestamp(), currency: 0 });
+  }
+
+  // Ensure holdings subcollection exists
+  const placeholderRef = doc(db, "users", uid, "holdings", "_placeholder");
+  const placeholderSnap = await getDoc(placeholderRef);
+  if (!placeholderSnap.exists()) {
+    await setDoc(placeholderRef, { dummy: true });
   }
 }
 
@@ -196,10 +203,15 @@ function loadUserPortfolioRealtime() {
 
   onSnapshot(holdingsRef, async (holdSnap) => {
     portfolioEl.innerHTML = "";
-    if (holdSnap.empty) { portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`; return; }
+    if (holdSnap.empty || (holdSnap.docs.length === 1 && holdSnap.docs[0].id === "_placeholder")) {
+      portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`;
+      return;
+    }
 
     for (const docSnap of holdSnap.docs) {
       const polId = docSnap.id;
+      if (polId === "_placeholder") continue;
+
       const polRef = doc(db, "politicians", polId);
       const polSnap = await getDoc(polRef);
       if (!polSnap.exists()) continue;
@@ -241,7 +253,10 @@ function loadDraftUIRealtime() {
 
   onSnapshot(collectionGroup(db, "holdings"), (allHoldSnap) => {
     const draftedIds = {};
-    allHoldSnap.docs.forEach(d => draftedIds[d.id] = d.ref.parent.parent.id);
+    allHoldSnap.docs.forEach(d => {
+      if (d.id === "_placeholder") return;
+      draftedIds[d.id] = d.ref.parent.parent.id;
+    });
 
     onSnapshot(collection(db, "politicians"), (allPolSnap) => {
       grid.innerHTML = "";
@@ -250,7 +265,6 @@ function loadDraftUIRealtime() {
         const data = docSnap.data();
         const card = document.createElement("div");
         card.className = "politician-card";
-        card.dataset.polId = polId;
 
         const draftedBy = draftedIds[polId] || null;
         if (draftedBy) card.classList.add("drafted");
@@ -261,6 +275,7 @@ function loadDraftUIRealtime() {
         card.onclick = async () => {
           if (!uid) { alert("Please log in"); return; }
           if (draftedBy) return;
+
           await setDoc(doc(db, "users", uid, "holdings", polId), {
             totalPoints: 0,
             lastPercentChange: 0,
