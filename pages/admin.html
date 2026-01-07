@@ -115,18 +115,41 @@
     const updateMessage = document.getElementById("updateMessage");
 
     // Load politicians into dropdown
-    async function loadPoliticians() {
-      const snap = await getDocs(collection(db, "Politicians"));
-      const select = document.getElementById("politicianSelect");
-      select.innerHTML = "";
+    // async function loadPoliticians() {
+    //   const snap = await getDocs(collection(db, "Politicians"));
+    //   const select = document.getElementById("politicianSelect");
+    //   select.innerHTML = "";
 
-      snap.forEach(doc => {
-        const opt = document.createElement("option");
-        opt.value = doc.id;
-        opt.textContent = doc.data().name;
-        select.appendChild(opt);
-      });
-    }
+    //   snap.forEach(doc => {
+    //     const opt = document.createElement("option");
+    //     opt.value = doc.id;
+    //     opt.textContent = doc.data().name;
+    //     select.appendChild(opt);
+    //   });
+    // }
+
+    async function loadPoliticians() {
+  console.log("Loading politicians…");
+
+  const snap = await getDocs(collection(db, "Politicians")); // or whatever casing you chose
+
+  console.log("Docs found:", snap.size);
+
+  const select = document.getElementById("politicianSelect");
+  select.innerHTML = "";
+
+  snap.forEach(docSnap => {
+    console.log("Doc ID:", docSnap.id, "Data:", docSnap.data());
+
+    const data = docSnap.data();
+
+    const opt = document.createElement("option");
+    opt.value = docSnap.id;
+    opt.textContent = data.name || "(NO NAME FIELD)";
+    select.appendChild(opt);
+  });
+}
+
 
     // ADMIN UNLOCK
     window.unlockAdmin = async function () {
