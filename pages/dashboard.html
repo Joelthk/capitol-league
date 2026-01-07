@@ -145,27 +145,32 @@ const draftModal = document.getElementById("draftModal");
 document.getElementById("openDraft").onclick = () => draftModal.style.display = "flex";
 document.getElementById("closeDraft").onclick = () => draftModal.style.display = "none";
 
+import { query, collectionGroup } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
 async function loadDraftUI() {
   const grid = document.getElementById("politicianGrid");
   grid.innerHTML = "";
 
   // Load all politicians
   const allPolSnap = await getDocs(collection(db, "politicians"));
-  // Load user's holdings to check which ones are already drafted
-  const userHoldingsSnap = await getDocs(collection(db, "users", uid, "holdings"));
-  const draftedIds = userHoldingsSnap.docs.map(d => d.id);
+
+  // Load all holdings across all users to block already drafted politicians
+  const allHoldingsSnap = await getDocs(collectionGroup(db, "holdings"));
+  const draftedIds = allHoldingsSnap.docs.map(d => d.id);
 
   allPolSnap.forEach(docSnap => {
     const data = docSnap.data();
     const card = document.createElement("div");
     card.className = "politician-card";
+
+    // Disable card if already drafted by anyone
     if (draftedIds.includes(docSnap.id)) card.classList.add("drafted");
 
     card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>`;
     card.onclick = async () => {
-      if (draftedIds.includes(docSnap.id)) return;
+      if (draftedIds.includes(docSnap.id)) return; // already drafted
 
-      // Add to holdings subcollection
+      // Add to current user's holdings
       await setDoc(doc(db, "users", uid, "holdings", docSnap.id), {
         totalPoints: 0,
         lastPercentChange: 0,
@@ -174,8 +179,10 @@ async function loadDraftUI() {
 
       alert(`You drafted ${data.name}!`);
       draftModal.style.display = "none";
-      loadUserPortfolio(); // refresh dashboard
-      loadDraftUI();       // refresh draft UI to mark drafted
+
+      // Refresh UI
+      loadUserPortfolio();
+      loadDraftUI();
     };
     grid.appendChild(card);
   });
