@@ -96,7 +96,7 @@ th {background:#fafafa;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp, collectionGroup, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp, collectionGroup, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
 // --- Firebase config ---
@@ -158,7 +158,7 @@ logoutBtn.onclick = async () => {
   passInput.value = "";
 };
 
-// Ensure user doc + holdings
+// Ensure user doc + placeholder
 async function ensureUserDoc(uid, email) {
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
@@ -170,7 +170,7 @@ async function ensureUserDoc(uid, email) {
   const placeholderRef = doc(db, "users", uid, "holdings", "_placeholder");
   const placeholderSnap = await getDoc(placeholderRef);
   if (!placeholderSnap.exists()) {
-    await setDoc(placeholderRef, { dummy: true });
+    await setDoc(placeholderRef, { dummy:true });
   }
 }
 
@@ -203,15 +203,14 @@ function loadUserPortfolioRealtime() {
 
   onSnapshot(holdingsRef, async (holdSnap) => {
     portfolioEl.innerHTML = "";
-    if (holdSnap.empty || (holdSnap.docs.length === 1 && holdSnap.docs[0].id === "_placeholder")) {
+    const realDocs = holdSnap.docs.filter(d => d.id !== "_placeholder");
+    if (realDocs.length === 0) {
       portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`;
       return;
     }
 
-    for (const docSnap of holdSnap.docs) {
+    for (const docSnap of realDocs) {
       const polId = docSnap.id;
-      if (polId === "_placeholder") continue;
-
       const polRef = doc(db, "politicians", polId);
       const polSnap = await getDoc(polRef);
       if (!polSnap.exists()) continue;
@@ -251,39 +250,47 @@ document.getElementById("closeDraft").onclick = () => draftModal.style.display =
 function loadDraftUIRealtime() {
   const grid = document.getElementById("politicianGrid");
 
-  onSnapshot(collectionGroup(db, "holdings"), (allHoldSnap) => {
+  onSnapshot(collectionGroup(db, "holdings"), async (allHoldSnap) => {
     const draftedIds = {};
     allHoldSnap.docs.forEach(d => {
-      if (d.id === "_placeholder") return;
+      if (d.id === "_placeholder") return; // ignore placeholder
       draftedIds[d.id] = d.ref.parent.parent.id;
     });
 
-    onSnapshot(collection(db, "politicians"), (allPolSnap) => {
-      grid.innerHTML = "";
-      allPolSnap.forEach(docSnap => {
-        const polId = docSnap.id;
-        const data = docSnap.data();
-        const card = document.createElement("div");
-        card.className = "politician-card";
+    const polSnap = await getDocs(collection(db, "politicians"));
+    grid.innerHTML = "";
 
-        const draftedBy = draftedIds[polId] || null;
-        if (draftedBy) card.classList.add("drafted");
-        if (draftedBy === uid) card.classList.add("own-draft");
+    polSnap.forEach(docSnap => {
+      const polId = docSnap.id;
+      const data = docSnap.data();
+      const card = document.createElement("div");
+      card.className = "politician-card";
 
-        card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>`;
+      const draftedBy = draftedIds[polId] || null;
+      if (draftedBy) card.classList.add("drafted");
+      if (draftedBy === uid) card.classList.add("own-draft");
 
-        card.onclick = async () => {
-          if (!uid) { alert("Please log in"); return; }
-          if (draftedBy) return;
+      card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>`;
 
-          await setDoc(doc(db, "users", uid, "holdings", polId), {
-            totalPoints: 0,
-            lastPercentChange: 0,
-            addedAt: serverTimestamp()
-          });
-        };
-        grid.appendChild(card);
-      });
+      card.onclick = async () => {
+        if (!uid) { alert("Please log in"); return; }
+        if (draftedBy) return;
+
+        await setDoc(doc(db, "users", uid, "holdings", polId), {
+          totalPoints: 0,
+          lastPercentChange: 0,
+          addedAt: serverTimestamp()
+        });
+
+        // remove placeholder if exists
+        const placeholderRef = doc(db, "users", uid, "holdings", "_placeholder");
+        const placeholderSnap = await getDoc(placeholderRef);
+        if (placeholderSnap.exists()) {
+          await deleteDoc(placeholderRef);
+        }
+      };
+
+      grid.appendChild(card);
     });
   });
 }
