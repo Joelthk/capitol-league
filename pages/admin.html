@@ -116,7 +116,7 @@
 
     // Load politicians into dropdown
     async function loadPoliticians() {
-      const snap = await getDocs(collection(db, "politicians"));
+      const snap = await getDocs(collection(db, "Politicians"));
       const select = document.getElementById("politicianSelect");
       select.innerHTML = "";
 
@@ -163,7 +163,7 @@
         return;
       }
 
-      await addDoc(collection(db, "snapshots"), {
+      await addDoc(collection(db, "Snapshots"), {
         politicianId,
         percentChange,
         updateWindow,
