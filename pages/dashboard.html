@@ -142,9 +142,22 @@ loginBtn.onclick = async () => {
 logoutBtn.onclick = async () => { await signOut(auth); };
 
 // --- Auth state ---
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     uid = user.uid;
+
+    // --- Ensure Firestore user doc exists ---
+    const userRef = doc(db, "users", uid);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      // Create user document
+      await setDoc(userRef, {
+        email: user.email,
+        createdAt: serverTimestamp(),
+        currency: 0
+      });
+    }
+
     loginBox.style.display = "none";
     container.style.display = "block";
     userEmailEl.textContent = user.email;
@@ -160,6 +173,7 @@ onAuthStateChanged(auth, (user) => {
     userEmailEl.textContent = "Not signed in";
   }
 });
+
 
 // --- Portfolio ---
 function loadUserPortfolioRealtime() {
