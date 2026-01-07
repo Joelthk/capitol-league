@@ -99,7 +99,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebas
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp, collectionGroup, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-// Firebase config
+// --- Firebase config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCjotIoBJtRrp3p3q6s9TSdZ044pAQoB20",
   authDomain: "capitol-league.firebaseapp.com",
@@ -158,15 +158,15 @@ logoutBtn.onclick = async () => {
   passInput.value = "";
 };
 
-// Ensure user document and holdings subcollection exist
+// Ensure user doc + holdings
 async function ensureUserDoc(uid, email) {
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
+
   if (!userSnap.exists()) {
     await setDoc(userRef, { email, createdAt: serverTimestamp(), currency: 0 });
   }
 
-  // Ensure holdings subcollection exists
   const placeholderRef = doc(db, "users", uid, "holdings", "_placeholder");
   const placeholderSnap = await getDoc(placeholderRef);
   if (!placeholderSnap.exists()) {
