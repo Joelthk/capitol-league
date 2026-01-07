@@ -33,8 +33,8 @@ th {background:#fafafa;}
 .politician-card small {display:block; color:#666; margin-top:4px;}
 #loginBox {max-width:300px; margin:50px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
 #loginBox input {width:100%; padding:8px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc;}
-#loginBox button {width:100%; padding:10px; border-radius:5px; border:none; background:#1a7f37; color:white; font-weight:bold; cursor:pointer;}
-#showPassBtn {margin-bottom:10px; cursor:pointer; padding:6px 8px; border-radius:5px; border:1px solid #ccc; background:#eee;}
+#loginBox button {width:100%; padding:10px; border-radius:5px; border:none; background:#1a7f37; color:white; font-weight:bold; cursor:pointer; margin-bottom:6px;}
+#showPassBtn {cursor:pointer; padding:6px 8px; border-radius:5px; border:1px solid #ccc; background:#eee; width:100%; margin-bottom:10px;}
 #logoutBtn {padding:6px 12px; background:red; color:white; border:none; border-radius:5px; cursor:pointer;}
 </style>
 </head>
@@ -54,7 +54,7 @@ th {background:#fafafa;}
   <h3>Login / Signup</h3>
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Password">
-  <button type="button" id="showPassBtn">Show Password</button>
+  <button id="showPassBtn">Show Password</button>
   <button id="loginBtn">Login / Signup</button>
 </div>
 
@@ -125,48 +125,58 @@ const draftModal = document.getElementById("draftModal");
 const showPassBtn = document.getElementById("showPassBtn");
 const passInput = document.getElementById("password");
 
-// Show/hide password toggle
+// Show/hide password
 showPassBtn.onclick = () => {
   if (passInput.type === "password") { passInput.type = "text"; showPassBtn.textContent = "Hide Password"; }
   else { passInput.type = "password"; showPassBtn.textContent = "Show Password"; }
 };
 
-// --- Login / Signup ---
+// Login / Signup
 loginBtn.onclick = async () => {
   const email = document.getElementById("email").value;
   const password = passInput.value;
   if (!email || !password) { alert("Enter email and password"); return; }
 
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    uid = cred.user.uid;
+    await ensureUserDoc(uid, email);
   } catch(err) {
     if (err.code === "auth/user-not-found") {
-      try { await createUserWithEmailAndPassword(auth, email, password); }
-      catch(e) { alert("Signup failed: " + e.message); }
-    } else if (err.code === "auth/wrong-password") { alert("Wrong password."); }
-    else { alert("Login failed: " + err.message); }
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        uid = cred.user.uid;
+        await ensureUserDoc(uid, email);
+      } catch(e) { alert("Signup failed: "+e.message); return; }
+    } else { alert("Login failed: "+err.message); return; }
   }
 };
 
-// --- Logout ---
-logoutBtn.onclick = async () => { await signOut(auth); };
+// Logout
+logoutBtn.onclick = async () => {
+  await signOut(auth);
+  passInput.value = "";
+};
 
-// --- Auth state ---
+// Ensure user document exists
+async function ensureUserDoc(uid, email) {
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) {
+    await setDoc(userRef, { email, createdAt: serverTimestamp(), currency: 0 });
+  }
+}
+
+// Auth state
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     uid = user.uid;
-
-    // Ensure user document exists
-    const userRef = doc(db, "users", uid);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) {
-      await setDoc(userRef, { email: user.email, createdAt: serverTimestamp(), currency: 0 });
-    }
-
     loginBox.style.display = "none";
     container.style.display = "block";
-    userEmailEl.textContent = user.email;
     logoutBtn.style.display = "inline-block";
+    userEmailEl.textContent = user.email;
+
+    await ensureUserDoc(uid, user.email);
 
     loadUserPortfolioRealtime();
     loadDraftUIRealtime();
@@ -179,7 +189,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// --- Portfolio ---
+// Portfolio
 function loadUserPortfolioRealtime() {
   const portfolioEl = document.getElementById("portfolio");
   const holdingsRef = collection(db, "users", uid, "holdings");
@@ -211,29 +221,26 @@ function loadUserPortfolioRealtime() {
         </div>
         <span class="remove-btn">✖</span>
       `;
-
       div.querySelector(".remove-btn").onclick = async (e) => {
         e.stopPropagation();
         if (confirm(`Remove ${polData.name}?`)) {
           await deleteDoc(doc(db, "users", uid, "holdings", polId));
         }
       };
-
       portfolioEl.appendChild(div);
     }
   });
 }
 
-// --- Draft UI ---
+// Draft UI
 document.getElementById("openDraft").onclick = () => draftModal.style.display = "flex";
 document.getElementById("closeDraft").onclick = () => draftModal.style.display = "none";
 
 function loadDraftUIRealtime() {
   const grid = document.getElementById("politicianGrid");
-  let draftedIds = {};
 
   onSnapshot(collectionGroup(db, "holdings"), (allHoldSnap) => {
-    draftedIds = {};
+    const draftedIds = {};
     allHoldSnap.docs.forEach(d => draftedIds[d.id] = d.ref.parent.parent.id);
 
     onSnapshot(collection(db, "politicians"), (allPolSnap) => {
@@ -241,27 +248,25 @@ function loadDraftUIRealtime() {
       allPolSnap.forEach(docSnap => {
         const polId = docSnap.id;
         const data = docSnap.data();
-
         const card = document.createElement("div");
         card.className = "politician-card";
         card.dataset.polId = polId;
 
-        const draftedBy = draftedIds[polId];
+        const draftedBy = draftedIds[polId] || null;
         if (draftedBy) card.classList.add("drafted");
         if (draftedBy === uid) card.classList.add("own-draft");
 
-        let draftedText = draftedBy ? `<small>Drafted by ${draftedBy}</small>` : "";
-        card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>${draftedText}`;
+        card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>`;
 
         card.onclick = async () => {
-          if (draftedBy) return; // already drafted
+          if (!uid) { alert("Please log in"); return; }
+          if (draftedBy) return;
           await setDoc(doc(db, "users", uid, "holdings", polId), {
             totalPoints: 0,
             lastPercentChange: 0,
             addedAt: serverTimestamp()
           });
         };
-
         grid.appendChild(card);
       });
     });
