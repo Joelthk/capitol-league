@@ -253,7 +253,7 @@ function loadDraftUIRealtime() {
   onSnapshot(collectionGroup(db, "holdings"), async (allHoldSnap) => {
     const draftedIds = {};
     allHoldSnap.docs.forEach(d => {
-      if (d.id === "_placeholder") return; // ignore placeholder
+      if (d.id === "_placeholder") return;
       draftedIds[d.id] = d.ref.parent.parent.id;
     });
 
