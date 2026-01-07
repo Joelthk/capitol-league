@@ -19,7 +19,6 @@
   .up { color:#1a7f37; }
   .down { color:#b42318; }
   .flat { color:#666; }
-
   .remove-btn {position:absolute; top:6px; right:6px; cursor:pointer; color:red; font-weight:bold;}
 
   /* Bottom */
@@ -38,19 +37,33 @@
   .drafted {opacity:0.5; cursor:default; pointer-events:none; background:#eee;}
   .own-draft {border:2px solid #1a7f37;}
   .drafted small {display:block; color:#666; margin-top:4px;}
+
+  /* Login UI */
+  #loginBox {max-width:300px; margin:50px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+  #loginBox input {width:100%; padding:8px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc;}
+  #loginBox button {width:100%; padding:10px; border-radius:5px; border:none; background:#1a7f37; color:white; font-weight:bold; cursor:pointer;}
+  #logoutBtn {padding:6px 12px; background:red; color:white; border:none; border-radius:5px; cursor:pointer;}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div>Capitol League</div>
-  <div>
-    <span class="currency">🪙 120</span>
-    <span>Profile</span>
+  <div id="userControls">
+    <span class="currency">🪙 0</span>
+    <span id="userEmail">Not signed in</span>
+    <button id="logoutBtn" style="display:none;">Logout</button>
   </div>
 </div>
 
-<div class="container">
+<div id="loginBox">
+  <h3>Login / Signup</h3>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+  <button id="loginBtn">Login / Signup</button>
+</div>
+
+<div class="container" style="display:none;">
   <h2>Your Portfolio</h2>
   <div class="portfolio" id="portfolio"></div>
   <button id="openDraft">Draft a Politician</button>
@@ -88,8 +101,9 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp, collectionGroup, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-// --- Initialize Firebase ---
+// --- Firebase ---
 const firebaseConfig = {
   apiKey: "AIzaSyCjotIoBJtRrp3p3q6s9TSdZ044pAQoB20",
   authDomain: "capitol-league.firebaseapp.com",
@@ -100,21 +114,63 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-// --- Mock user ID ---
-const uid = "user123";
+let uid = null;
+
+// --- UI Elements ---
+const loginBox = document.getElementById("loginBox");
+const container = document.querySelector(".container");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const userEmailEl = document.getElementById("userEmail");
+const currencyEl = document.querySelector(".currency");
+
+// --- Login / Signup ---
+loginBtn.onclick = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      .catch(async err => {
+        // If login fails, try creating account
+        if (err.code === "auth/user-not-found") {
+          return await createUserWithEmailAndPassword(auth, email, password);
+        } else throw err;
+      });
+    console.log("Signed in as", userCredential.user.uid);
+  } catch(e) { alert(e.message); }
+};
+
+logoutBtn.onclick = async () => { await signOut(auth); };
+
+// --- Auth state ---
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    uid = user.uid;
+    userEmailEl.textContent = user.email;
+    logoutBtn.style.display = "inline-block";
+    loginBox.style.display = "none";
+    container.style.display = "block";
+    loadUserPortfolioRealtime();
+    loadDraftUIRealtime();
+  } else {
+    uid = null;
+    userEmailEl.textContent = "Not signed in";
+    logoutBtn.style.display = "none";
+    loginBox.style.display = "block";
+    container.style.display = "none";
+  }
+});
 
 // --- Portfolio ---
 function loadUserPortfolioRealtime() {
   const portfolioEl = document.getElementById("portfolio");
-
   const holdingsRef = collection(db, "users", uid, "holdings");
+
   onSnapshot(holdingsRef, async (holdSnap) => {
     portfolioEl.innerHTML = "";
-    if (holdSnap.empty) {
-      portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`;
-      return;
-    }
+    if (holdSnap.empty) { portfolioEl.innerHTML = `<p style="color:#666;">You haven't drafted any politicians yet.</p>`; return; }
 
     for (const docSnap of holdSnap.docs) {
       const polId = docSnap.id;
@@ -122,7 +178,6 @@ function loadUserPortfolioRealtime() {
       const polSnap = await getDoc(polRef);
       if (!polSnap.exists()) continue;
       const polData = polSnap.data();
-
       const cls = polData.lastPercentChange > 0 ? "up" : polData.lastPercentChange < 0 ? "down" : "flat";
 
       const div = document.createElement("div");
@@ -141,7 +196,6 @@ function loadUserPortfolioRealtime() {
         <span class="remove-btn">✖</span>
       `;
 
-      // Remove button for testing
       div.querySelector(".remove-btn").onclick = async (e) => {
         e.stopPropagation();
         if (confirm(`Remove ${polData.name} from your holdings?`)) {
@@ -161,17 +215,12 @@ document.getElementById("closeDraft").onclick = () => draftModal.style.display =
 
 function loadDraftUIRealtime() {
   const grid = document.getElementById("politicianGrid");
-
   let draftedIds = {};
 
-  // Listen to all holdings across all users
   onSnapshot(collectionGroup(db, "holdings"), (allHoldSnap) => {
     draftedIds = {};
-    allHoldSnap.docs.forEach(d => {
-      draftedIds[d.id] = d.ref.parent.parent.id; // user ID who drafted
-    });
+    allHoldSnap.docs.forEach(d => draftedIds[d.id] = d.ref.parent.parent.id);
 
-    // Load politicians after drafted info is ready
     onSnapshot(collection(db, "politicians"), (allPolSnap) => {
       grid.innerHTML = "";
       allPolSnap.forEach(docSnap => {
@@ -182,29 +231,23 @@ function loadDraftUIRealtime() {
         card.className = "politician-card";
         card.dataset.polId = polId;
 
-        let draftedBy = draftedIds[polId];
+        const draftedBy = draftedIds[polId];
         if (draftedBy) card.classList.add("drafted");
         if (draftedBy === uid) card.classList.add("own-draft");
 
         let draftedText = draftedBy ? `<small>Drafted by ${draftedBy}</small>` : "";
         card.innerHTML = `<strong>${data.name}</strong><br><small>${data.party} - ${data.chamber}</small>${draftedText}`;
 
-        // Click handler
         card.onclick = async () => {
-          if (draftedBy) return; // already drafted
+          if (draftedBy) return;
           await setDoc(doc(db, "users", uid, "holdings", polId), { addedAt: serverTimestamp() });
-          draftModal.style.display = "none";
         };
+
         grid.appendChild(card);
       });
     });
   });
 }
-
-// --- Initialize ---
-loadUserPortfolioRealtime();
-loadDraftUIRealtime();
-
 </script>
 </body>
 </html>
